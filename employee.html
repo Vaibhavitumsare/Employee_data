@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Employee Management</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f9;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background-color: #4CAF50;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .container {
+      width: 90%;
+      margin: 20px auto;
+    }
+
+    table {
+      width: 100%;
+      margin: 20px 0;
+      border-collapse: collapse;
+    }
+
+    table, th, td {
+      border: 1px solid #ddd;
+    }
+
+    th, td {
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    button {
+      padding: 5px 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    input {
+      padding: 8px;
+      margin: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    #addEmployeeForm {
+      display: none;
+      background-color: white;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 400px;
+    }
+
+    #addEmployeeForm input, #addEmployeeForm button {
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    #message {
+      color: green;
+    }
+
+    .search-section {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .search-section input {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Employee Management System</h1>
+</header>
+
+<div class="container">
+  <!-- Search Section -->
+  <div class="search-section">
+    <input type="text" id="searchName" placeholder="Search by name" />
+    <button onclick="searchEmployeeByName()">Search Name</button>
+
+    <input type="number" id="searchId" placeholder="Search by ID" />
+    <button onclick="searchEmployeeById()">Search ID</button>
+  </div>
+
+  <button onclick="toggleAddEmployeeForm()">Add Employee</button>
+
+  <div id="message"></div>
+
+  <!-- Employee Table -->
+  <table id="employeeTable">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Phone Number</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Add Employee Form -->
+<div id="addEmployeeForm">
+  <h2>Add Employee</h2>
+  <input type="text" id="employeeName" placeholder="Name" />
+  <input type="email" id="employeeEmail" placeholder="Email" />
+  <input type="text" id="employeePhone" placeholder="Phone Number" />
+  <button onclick="addEmployee()">Save Employee</button>
+  <button onclick="toggleAddEmployeeForm()">Close</button>
+</div>
+
+<script>
+  const apiUrl = 'http://localhost:8080';
+  let employees = [];
+
+  window.onload = fetchEmployees;
+
+  function fetchEmployees() {
+    fetch(`${apiUrl}/employees`)
+      .then(res => res.json())
+      .then(data => {
+        employees = data;
+        renderTable(employees);
+      });
+  }
+
+  function renderTable(list) {
+    const tbody = document.querySelector('#employeeTable tbody');
+    tbody.innerHTML = '';
+    list.forEach(emp => {
+      const row = tbody.insertRow();
+      row.innerHTML = `
+        <td>${emp.id}</td>
+        <td>${emp.name}</td>
+        <td>${emp.email}</td>
+        <td>${emp.phoneNumber}</td>
+        <td>
+          <button onclick="updateEmployee(${emp.id})">Update</button>
+          <button onclick="deleteEmployee(${emp.id})">Delete</button>
+        </td>
+      `;
+    });
+  }
+
+  function addEmployee() {
+    const name = document.getElementById('employeeName').value;
+    const email = document.getElementById('employeeEmail').value;
+    const phone = document.getElementById('employeePhone').value;
+
+    fetch(`${apiUrl}/employees`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, phoneNumber: phone })
+    })
+    .then(res => res.text())
+    .then(() => {
+      document.getElementById('message').textContent = 'Employee added!';
+      toggleAddEmployeeForm();
+      fetchEmployees();
+    });
+  }
+
+  function updateEmployee(id) {
+    const emp = employees.find(e => e.id === id);
+    const name = prompt('New name:', emp.name);
+    const email = prompt('New email:', emp.email);
+    const phone = prompt('New phone:', emp.phoneNumber);
+
+    fetch(`${apiUrl}/employees/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, phoneNumber: phone })
+    })
+    .then(res => res.text())
+    .then(() => {
+      document.getElementById('message').textContent = 'Updated successfully';
+      fetchEmployees();
+    });
+  }
+
+  function deleteEmployee(id) {
+    fetch(`${apiUrl}/employees/${id}`, { method: 'DELETE' })
+      .then(res => res.text())
+      .then(() => {
+        document.getElementById('message').textContent = 'Deleted successfully';
+        fetchEmployees();
+      });
+  }
+
+  function toggleAddEmployeeForm() {
+    const form = document.getElementById('addEmployeeForm');
+    form.style.display = form.style.display === 'block' ? 'none' : 'block';
+  }
+
+  function searchEmployeeByName() {
+    const name = document.getElementById('searchName').value.toLowerCase();
+    const filtered = employees.filter(e => e.name.toLowerCase().includes(name));
+    renderTable(filtered);
+  }
+
+  function searchEmployeeById() {
+    const id = document.getElementById('searchId').value;
+    if (!id) return;
+    fetch(`${apiUrl}/employees/${id}`)
+      .then(res => {
+        if (!res.ok) throw new Error("Not Found");
+        return res.json();
+      })
+      .then(emp => renderTable([emp]))
+      .catch(() => {
+        document.getElementById('message').textContent = 'Employee not found!';
+      });
+  }
+
+  // Enable Enter key to trigger search
+  document.getElementById('searchName').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') searchEmployeeByName();
+  });
+
+  document.getElementById('searchId').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') searchEmployeeById();
+  });
+</script>
+</body>
+</html>
